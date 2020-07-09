@@ -1,11 +1,12 @@
 package xray
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 type testData struct {
@@ -30,7 +31,7 @@ func TestMiddlewareGeneralCase(t *testing.T) {
 	go tDaemon.Run()
 	defer tDaemon.Stop()
 	router := gin.New()
-	router.Use(Middleware())
+	router.Use(Middleware(nil))
 
 	router.GET("/", func(c *gin.Context) {
 		c.String(200, "OK.")
@@ -76,8 +77,6 @@ func TestMiddlewareGeneralCase(t *testing.T) {
 			assert.Equal(t, td.Fault, s.Fault, "Performing request %s", td.Path)
 		}
 	}
-
-	tDaemon.Done = true
 }
 
 func performRequest(r http.Handler, method, path string, headers ...test_header) *httptest.ResponseRecorder {

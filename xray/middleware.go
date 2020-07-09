@@ -23,7 +23,7 @@ func Middleware(sn xray.SegmentNamer) gin.HandlerFunc {
 		} else {
 			name = methodPathSegmentName(c.Request)
 		}
-		ctx, seg := xray.NewSegmentFromHeader(c.Request.Context(), name, traceHeader)
+		ctx, seg := xray.NewSegmentFromHeader(c.Request.Context(), name, c.Request, traceHeader)
 		c.Request = c.Request.WithContext(ctx)
 
 		captureRequestData(c, seg)
