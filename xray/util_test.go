@@ -3,10 +3,20 @@ package xray
 import (
 	"context"
 	"encoding/json"
-	"github.com/aws/aws-xray-sdk-go/xray"
 	"net"
 	"time"
+
+	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
+	"github.com/aws/aws-xray-sdk-go/xray"
 )
+
+type TestSamplingStrategy struct{}
+
+func (tss *TestSamplingStrategy) ShouldTrace(request *sampling.Request) *sampling.Decision {
+	return &sampling.Decision{
+		Sample: true,
+	}
+}
 
 func NewXRayTestDaemon() (*testDaemon, error) {
 	d := &testDaemon{
@@ -16,18 +26,23 @@ func NewXRayTestDaemon() (*testDaemon, error) {
 		IP:   net.IPv4(127, 0, 0, 1),
 		Port: 2010,
 	}
-	err := xray.Configure(xray.Config{DaemonAddr: "localhost:2010"})
+
+	conn, err := net.ListenUDP("udp", listenerAddr)
 	if err != nil {
 		return nil, err
 	}
-	if d.Connection == nil {
-		conn, err := net.ListenUDP("udp", listenerAddr)
-		if err != nil {
-			return nil, err
-		}
 
-		d.Connection = conn
+	d.Connection = conn
+
+	err = xray.Configure(xray.Config{
+		DaemonAddr:             conn.LocalAddr().String(),
+		ServiceVersion:         "TestVersion",
+		SamplingStrategy: &TestSamplingStrategy{},
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	return d, nil
 }
 
@@ -45,7 +60,7 @@ func (td *testDaemon) Run() {
 	buffer := make([]byte, 64000)
 	// Don't do that in production code
 	for !td.Done {
-		n, _, err := td.Connection.ReadFromUDP(buffer)
+		n, _, err := td.Connection.ReadFrom(buffer)
 		if err != nil {
 			td.Channel <- &result{nil, err}
 			continue
